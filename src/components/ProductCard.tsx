@@ -10,6 +10,8 @@ type Product = {
   created_at: string
   images: string[] | null
   profiles: { nickname: string } | null
+  likes?: { count: number }[]
+  comments?: { count: number }[]
 }
 
 function timeAgo(dateStr: string) {
@@ -25,6 +27,8 @@ export default function ProductCard({ product }: { product: Product }) {
   const isSold = product.status === 'sold'
   const isReserved = product.status === 'reserved'
   const thumbnail = product.images?.[0]
+  const likeCount = product.likes?.[0]?.count ?? 0
+  const commentCount = product.comments?.[0]?.count ?? 0
 
   return (
     <Link href={`/products/${product.id}`} className="block group">
@@ -83,6 +87,12 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center justify-between text-xs text-purple-300">
           <span>{product.profiles?.nickname ?? '고구마'}</span>
           <span>{timeAgo(product.created_at)}</span>
+        </div>
+
+        {/* 좋아요 + 댓글 수 */}
+        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-pink-50 text-xs text-purple-400">
+          <span className="flex items-center gap-1">❤️ {likeCount}</span>
+          <span className="flex items-center gap-1">💬 {commentCount}</span>
         </div>
       </div>
     </Link>

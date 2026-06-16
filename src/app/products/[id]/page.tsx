@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ProductOwnerActions from '@/components/ProductOwnerActions'
 import ProductGallery from '@/components/ProductGallery'
+import LikeButton from '@/components/LikeButton'
+import CommentSection, { type CommentItem } from '@/components/CommentSection'
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -38,6 +40,38 @@ export default async function ProductDetailPage({
   const isOwner = user?.id === product.user_id
   const isGift = product.price === 0
   const nickname = (product.profiles as any)?.nickname ?? '고구마'
+
+  // 좋아요: 전체 수 + 현재 사용자의 좋아요 여부
+  const { count: likeCount } = await supabase
+    .from('likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('product_id', id)
+
+  let userLiked = false
+  if (user) {
+    const { data: myLike } = await supabase
+      .from('likes')
+      .select('product_id')
+      .eq('product_id', id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    userLiked = !!myLike
+  }
+
+  // 댓글: 작성자 닉네임과 함께 조회
+  const { data: commentRows } = await supabase
+    .from('comments')
+    .select('id, content, created_at, user_id, profiles!comments_user_id_profiles_fk(nickname)')
+    .eq('product_id', id)
+    .order('created_at', { ascending: true })
+
+  const comments: CommentItem[] = (commentRows ?? []).map((c: any) => ({
+    id: c.id,
+    content: c.content,
+    created_at: c.created_at,
+    user_id: c.user_id,
+    nickname: c.profiles?.nickname ?? '고구마',
+  }))
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -105,6 +139,16 @@ export default async function ProductDetailPage({
           )}
         </div>
 
+        {/* 좋아요 */}
+        <div className="mt-6 pt-6 border-t border-pink-100">
+          <LikeButton
+            productId={product.id}
+            initialLiked={userLiked}
+            initialCount={likeCount ?? 0}
+            isLoggedIn={!!user}
+          />
+        </div>
+
         {/* 소유자 액션 */}
         {isOwner && (
           <ProductOwnerActions
@@ -113,6 +157,14 @@ export default async function ProductDetailPage({
           />
         )}
       </div>
+
+      {/* 댓글 */}
+      <CommentSection
+        productId={product.id}
+        comments={comments}
+        currentUserId={user?.id ?? null}
+        isLoggedIn={!!user}
+      />
     </div>
   )
 }

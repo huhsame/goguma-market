@@ -16,7 +16,7 @@ export default async function ProductsPage({
 
   let query = supabase
     .from('products')
-    .select('id, title, price, category, status, created_at, images, profiles!products_user_id_profiles_fk(nickname)')
+    .select('id, title, price, category, status, created_at, images, profiles!products_user_id_profiles_fk(nickname), likes(count), comments(count)')
     .order('created_at', { ascending: false })
 
   if (category) {
