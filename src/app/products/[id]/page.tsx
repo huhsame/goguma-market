@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ProductOwnerActions from '@/components/ProductOwnerActions'
+import ProductGallery from '@/components/ProductGallery'
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -45,6 +46,9 @@ export default async function ProductDetailPage({
       </Link>
 
       <div className="goguma-card p-8">
+        {/* 이미지 갤러리 */}
+        <ProductGallery images={product.images ?? []} title={product.title} />
+
         {/* 상태 배지 + 카테고리 */}
         <div className="flex items-center gap-2 mb-4">
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${

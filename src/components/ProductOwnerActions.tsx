@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { updateStatus, deleteProduct } from '@/app/products/[id]/actions'
 
 const STATUS_OPTIONS = [
@@ -68,14 +69,22 @@ export default function ProductOwnerActions({
         <p className="text-pink-500 text-xs mb-3">{error}</p>
       )}
 
-      {/* 삭제 */}
-      <button
-        onClick={handleDelete}
-        disabled={isPending}
-        className="w-full py-2 text-sm text-red-400 hover:text-red-600 border border-red-100 hover:border-red-300 rounded-xl transition-colors disabled:opacity-50"
-      >
-        판매글 삭제
-      </button>
+      {/* 수정 / 삭제 */}
+      <div className="flex gap-2">
+        <Link
+          href={`/products/${productId}/edit`}
+          className="flex-1 py-2 text-center text-sm text-purple-500 hover:text-purple-700 border border-purple-200 hover:border-purple-400 rounded-xl transition-colors"
+        >
+          수정하기 ✏️
+        </Link>
+        <button
+          onClick={handleDelete}
+          disabled={isPending}
+          className="flex-1 py-2 text-sm text-red-400 hover:text-red-600 border border-red-100 hover:border-red-300 rounded-xl transition-colors disabled:opacity-50"
+        >
+          삭제하기
+        </button>
+      </div>
     </div>
   )
 }

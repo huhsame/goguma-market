@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,15 @@ const CATEGORIES = [
   '스포츠/레저', '생활/주방', '취미/게임', '기타',
 ]
 
-export default function NewProductPage() {
+export default function EditProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
+  const router = useRouter()
+  const supabase = createClient()
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -20,16 +28,43 @@ export default function NewProductPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.push('/auth/login')
-      else setUserId(user.id)
-    })
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
+
+      const { data: product } = await supabase
+        .from('products')
+        .select('user_id, title, description, price, category, images')
+        .eq('id', id)
+        .single()
+
+      if (!product) {
+        router.push('/products')
+        return
+      }
+      if (product.user_id !== user.id) {
+        // 소유자가 아니면 상세로 돌려보냄
+        router.push(`/products/${id}`)
+        return
+      }
+
+      setUserId(user.id)
+      setTitle(product.title)
+      setDescription(product.description)
+      setPrice(String(product.price))
+      setCategory(product.category)
+      setImages(product.images ?? [])
+      setReady(true)
+    }
+    load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [id])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,41 +80,43 @@ export default function NewProductPage() {
 
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/auth/login')
-      return
-    }
-
-    const { data, error: dbError } = await supabase
+    const { error: dbError } = await supabase
       .from('products')
-      .insert({
-        user_id: user.id,
+      .update({
         title: titleTrimmed,
         description: descriptionTrimmed,
         price: priceNum,
         category,
         images,
+        updated_at: new Date().toISOString(),
       })
-      .select('id')
-      .single()
+      .eq('id', id)
 
     if (dbError) {
-      setError('등록 중 오류가 발생했어요 😢')
+      setError('수정 중 오류가 발생했어요 😢')
       setLoading(false)
       return
     }
 
-    router.push(`/products/${data.id}`)
+    router.push(`/products/${id}`)
+    router.refresh()
+  }
+
+  if (!ready) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center text-purple-300">
+        불러오는 중... 🍠
+      </div>
+    )
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/products" className="text-purple-400 hover:text-purple-600 transition-colors">
-          ← 목록으로
+        <Link href={`/products/${id}`} className="text-purple-400 hover:text-purple-600 transition-colors">
+          ← 돌아가기
         </Link>
-        <h1 className="text-2xl font-bold text-purple-700">판매글 작성 🍠</h1>
+        <h1 className="text-2xl font-bold text-purple-700">판매글 수정 ✏️</h1>
       </div>
 
       <div className="goguma-card p-8">
@@ -108,11 +145,7 @@ export default function NewProductPage() {
           {/* 사진 */}
           <div>
             <label className="block text-sm font-medium text-purple-600 mb-2">상품 사진</label>
-            {userId ? (
-              <ImageUploader userId={userId} value={images} onChange={setImages} />
-            ) : (
-              <p className="text-purple-300 text-sm">불러오는 중...</p>
-            )}
+            {userId && <ImageUploader userId={userId} value={images} onChange={setImages} />}
           </div>
 
           {/* 제목 */}
@@ -174,17 +207,13 @@ export default function NewProductPage() {
 
           <div className="flex gap-3 pt-2">
             <Link
-              href="/products"
+              href={`/products/${id}`}
               className="flex-1 text-center text-purple-500 border-2 border-purple-200 hover:border-purple-400 py-3 rounded-2xl font-bold transition-colors"
             >
               취소
             </Link>
-            <button
-              type="submit"
-              disabled={loading}
-              className="goguma-btn flex-1"
-            >
-              {loading ? '등록 중... ✨' : '등록하기 🍠'}
+            <button type="submit" disabled={loading} className="goguma-btn flex-1">
+              {loading ? '저장 중... ✨' : '수정 완료 ✏️'}
             </button>
           </div>
         </form>
